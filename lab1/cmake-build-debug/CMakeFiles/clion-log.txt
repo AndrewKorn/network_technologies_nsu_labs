@@ -1,0 +1,1 @@
+CMakeLists.txt not found in /home/andrew/NSU/network_labs/lab1 Select CMakeLists.txt
