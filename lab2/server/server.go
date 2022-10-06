@@ -54,16 +54,16 @@ func copyToFile(newFile *os.File, c byte) {
 	}
 }
 
-func calculateSpeed(begin *time2.Time, speed Speed, readBytes *int) {
-	diffTime := time2.Now().Sub(*begin)
-	if diffTime > 3*time2.Second {
-		speed.current = 1000 * *readBytes / int(diffTime.Milliseconds())
+func calculateSpeed(ticker *time2.Ticker, speed *Speed, readBytes *int) {
+	select {
+	case <-ticker.C:
+		speed.current = *readBytes / 3
 		if speed.current > speed.max {
 			speed.max = speed.current
 		}
 		fmt.Println("speed: ", speed.current, "bytes per second")
-		*begin = time2.Now()
 		*readBytes = 0
+	default:
 	}
 }
 
@@ -102,10 +102,10 @@ func gettingFileRoutine(connection net.Conn) {
 	fmt.Println("____________________________")
 
 	start := time2.Now()
-	begin := time2.Now()
 	readBytes := 0
 	total := 0
 	speed := Speed{0, 0, 0}
+	ticker := time2.NewTicker(3 * time2.Second)
 
 	for {
 		c, err := bufReader.ReadByte()
@@ -120,19 +120,10 @@ func gettingFileRoutine(connection net.Conn) {
 		}
 
 		copyToFile(newFile, c)
-		calculateSpeed(&begin, speed, &readBytes)
+		calculateSpeed(ticker, &speed, &readBytes)
 	}
 
 	end := time2.Now()
-
-	if total == readBytes {
-		speed.current = 1000 * readBytes / int(end.Sub(begin).Milliseconds())
-		if speed.current > speed.max {
-			speed.max = speed.current
-		}
-		fmt.Println("speed: ", speed.current, " bytes per second")
-	}
-
 	speed.average = 1000 * total / int(end.Sub(start).Milliseconds())
 
 	fmt.Println("____________________________")
