@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"fmt"
 	"io"
 	"net"
@@ -11,18 +12,40 @@ import (
 type FileInfo struct {
 	fileName string
 	fileSize int
+	checkSum string
+}
+
+func emptyFileInfo() FileInfo {
+	return FileInfo{"", 0, ""}
+}
+
+func getCheckSum(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(hash.Sum(nil))
 }
 
 func getFileInfo(filePath string) FileInfo {
 	fileStat, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Println(err)
-		return FileInfo{"", 0}
+		return emptyFileInfo()
 	}
 
 	fileName := fileStat.Name()
 	fileSize := int(fileStat.Size())
-	return FileInfo{fileName: fileName, fileSize: fileSize}
+	checkSum := getCheckSum(filePath)
+	return FileInfo{fileName: fileName, fileSize: fileSize, checkSum: checkSum}
 }
 
 func sendFileInfo(connection net.Conn, fileInfo FileInfo) {
@@ -31,7 +54,14 @@ func sendFileInfo(connection net.Conn, fileInfo FileInfo) {
 		fmt.Println(err)
 		return
 	}
+
 	_, err = connection.Write([]byte(strconv.Itoa(fileInfo.fileSize) + "\n"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	_, err = connection.Write([]byte(fileInfo.checkSum + "\n"))
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -48,7 +78,6 @@ func sendFile(connection net.Conn, filePath string) {
 			file.Close()
 			break
 		}
-		//fmt.Fprint(connection, string(sendBuf))
 		connection.Write(sendBuf)
 	}
 }

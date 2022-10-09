@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,7 @@ import (
 type FileInfo struct {
 	fileName string
 	fileSize int
+	checkSum string
 }
 
 type Speed struct {
@@ -24,25 +26,52 @@ type Speed struct {
 	average int
 }
 
+func emptyFileInfo() FileInfo {
+	return FileInfo{"", 0, ""}
+}
+
+func getCheckSum(filePath string) string {
+	file, err := os.Open(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	hash := md5.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(hash.Sum(nil))
+}
+
 func getFileInfo(bufReader *bufio.Reader) FileInfo {
 	fileName, err := bufReader.ReadString('\n')
 	if err != nil {
 		fmt.Println(err)
-		return FileInfo{"", 0}
+		return emptyFileInfo()
 	}
 
 	fileSize, err := bufReader.ReadString('\n')
 	if err != nil {
 		fmt.Println(err)
-		return FileInfo{"", 0}
+		return emptyFileInfo()
+	}
+
+	checkSum, err := bufReader.ReadString('\n')
+	if err != nil {
+		fmt.Println(err)
+		return emptyFileInfo()
 	}
 
 	fileName = strings.Trim(fileName, "\n")
 	fileSize = strings.Trim(fileSize, "\n")
+	checkSum = strings.Trim(checkSum, "\n")
 
 	fileSizeInt, _ := strconv.Atoi(fileSize)
 
-	return FileInfo{fileName: fileName, fileSize: fileSizeInt}
+	return FileInfo{fileName: fileName, fileSize: fileSizeInt, checkSum: checkSum}
 }
 
 func copyToFile(newFile *os.File, c byte) {
@@ -85,13 +114,12 @@ func sendSuccessStatus(connection net.Conn, success bool) {
 
 func gettingFileRoutine(connection net.Conn) {
 	defer connection.Close()
-
 	bufReader := bufio.NewReader(connection)
 
 	fileInfo := getFileInfo(bufReader)
-
 	fmt.Println("file name: ", fileInfo.fileName)
 	fmt.Println("file size: ", fileInfo.fileSize)
+
 	newFile, err := os.Create("./uploads/" + fileInfo.fileName)
 	if err != nil {
 		fmt.Println(err)
@@ -115,7 +143,7 @@ func gettingFileRoutine(connection net.Conn) {
 
 		readBytes++
 		total++
-		if total >= fileInfo.fileSize {
+		if total > fileInfo.fileSize {
 			break
 		}
 
@@ -131,14 +159,7 @@ func gettingFileRoutine(connection net.Conn) {
 	fmt.Println("Max speed: ", speed.max)
 	fmt.Println("Average speed: ", speed.average)
 
-	newFileStat, err := newFile.Stat()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	newFileSize := int(newFileStat.Size())
-	success := fileInfo.fileSize == newFileSize
+	success := fileInfo.checkSum == getCheckSum("./uploads/"+fileInfo.fileName)
 	sendSuccessStatus(connection, success)
 }
 
