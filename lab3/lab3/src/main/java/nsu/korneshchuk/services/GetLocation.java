@@ -10,11 +10,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class GetLocation implements Runnable {
     private final LocationContext locationContext;
-    private static final String APIKey = "";
+    private static final String APIKey = "07813426-c567-4088-b25f-de54caff7e39";
 
     public GetLocation(LocationContext locationContext) {
         this.locationContext = locationContext;

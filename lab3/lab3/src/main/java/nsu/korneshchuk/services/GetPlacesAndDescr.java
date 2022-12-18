@@ -24,7 +24,7 @@ public class GetPlacesAndDescr implements Runnable {
 
         Request request = new Request.Builder()
                 .url("https://api.opentripmap.com/0.1/en/places/radius?" +
-                        "radius=1000" +
+                        "radius=500" +
                         "&lon=" + locationContext.getSelectedLocation().point().lng() +
                         "&lat=" + locationContext.getSelectedLocation().point().lat() +
                         "&apikey=" + APIKey
